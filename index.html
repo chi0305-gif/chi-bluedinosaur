@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>粉嫩恐龍倒數計時器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Varela+Round&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-pink: #FFF0F5;
+            --soft-pink: #FFB7B2;
+            --hot-pink: #FF69B4;
+            --mint-green: #B5EAD7;
+            --pastel-purple: #E2F0CB;
+            --soft-purple: #C7CEEA;
+            --text-color: #6B5B95;
+        }
+
+        body {
+            background-color: var(--bg-pink);
+            font-family: 'Varela Round', sans-serif;
+            color: var(--text-color);
+            background-image: radial-gradient(#FFB7B2 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .font-cute {
+            font-family: 'Mochiy Pop One', sans-serif;
+        }
+
+        /* Custom Scrollbar for inputs */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            border: 4px solid white;
+            box-shadow: 0 10px 25px rgba(255, 183, 178, 0.4);
+        }
+
+        .btn-push {
+            transition: all 0.1s;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+        }
+        .btn-push:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 rgba(0,0,0,0);
+        }
+
+        /* Animations */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #FFB7B2;
+            animation: fall linear forwards;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(720deg); }
+        }
+    </style>
+</head>
+<body class="h-screen w-full flex items-center justify-center overflow-hidden relative">
+
+    <!-- Clouds Background -->
+    <div id="clouds-container" class="absolute inset-0 pointer-events-none z-0"></div>
+
+    <div class="glass-panel rounded-3xl p-6 md:p-8 w-full max-w-xl relative z-10 mx-4 flex flex-col items-center">
+        
+        <!-- Mute Button -->
+        <button id="muteBtn" class="absolute top-5 right-5 text-pink-300 hover:text-pink-500 transition-transform hover:scale-110 z-20">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-2xl"></i>
+        </button>
+
+        <!-- Header -->
+        <h1 class="text-2xl md:text-3xl font-cute text-pink-500 mb-2 tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-heart text-red-400 text-xl animate-pulse"></i>
+            Chi's Timer
+            <i class="fa-solid fa-heart text-red-400 text-xl animate-pulse"></i>
+        </h1>
+        <p class="text-slate-500 mb-4 text-xs md:text-sm">名棋老師與小呆一起陪你倒數</p>
+
+        <!-- Game Canvas Area -->
+        <div class="w-full h-40 bg-white rounded-2xl border-4 border-white shadow-inner mb-6 relative overflow-hidden group">
+            <canvas id="gameCanvas" class="w-full h-full object-cover rounded-xl"></canvas>
+            <!-- Overlay Message -->
+            <div id="statusMessage" class="absolute inset-0 flex items-center justify-center bg-white/30 backdrop-blur-sm hidden font-cute text-xl text-pink-500">
+                時間到囉！
+            </div>
+        </div>
+
+        <!-- Timer Display (Updated for Hours) -->
+        <div class="flex items-center justify-center gap-1 md:gap-2 mb-8 bg-white px-4 py-4 rounded-full shadow-sm border-2 border-pink-100 w-full max-w-md">
+            <!-- Hour -->
+            <div class="flex flex-col items-center">
+                <input type="number" id="inputHour" value="00" min="0" max="99" 
+                    class="text-4xl md:text-5xl font-cute text-center w-16 md:w-20 bg-transparent text-slate-600 focus:outline-none focus:text-pink-500 transition-colors placeholder-pink-200"
+                    placeholder="00">
+                <span class="text-[10px] md:text-xs text-pink-300 font-bold uppercase tracking-widest mt-1">時</span>
+            </div>
+            <span class="text-3xl md:text-4xl font-cute text-pink-300 pb-6">:</span>
+            <!-- Minute -->
+            <div class="flex flex-col items-center">
+                <input type="number" id="inputMin" value="00" min="0" max="59" 
+                    class="text-4xl md:text-5xl font-cute text-center w-16 md:w-20 bg-transparent text-slate-600 focus:outline-none focus:text-pink-500 transition-colors placeholder-pink-200"
+                    placeholder="00">
+                <span class="text-[10px] md:text-xs text-pink-300 font-bold uppercase tracking-widest mt-1">分</span>
+            </div>
+            <span class="text-3xl md:text-4xl font-cute text-pink-300 pb-6">:</span>
+            <!-- Second -->
+            <div class="flex flex-col items-center">
+                <input type="number" id="inputSec" value="00" min="0" max="59" 
+                    class="text-4xl md:text-5xl font-cute text-center w-16 md:w-20 bg-transparent text-slate-600 focus:outline-none focus:text-pink-500 transition-colors placeholder-pink-200"
+                    placeholder="00">
+                <span class="text-[10px] md:text-xs text-pink-300 font-bold uppercase tracking-widest mt-1">秒</span>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex gap-4 w-full justify-center">
+            <button id="startBtn" class="btn-push flex-1 bg-green-300 hover:bg-green-400 text-white font-cute py-3 rounded-2xl text-lg flex items-center justify-center gap-2">
+                <i class="fa-solid fa-play"></i> 開始
+            </button>
+            <button id="pauseBtn" class="hidden btn-push flex-1 bg-yellow-300 hover:bg-yellow-400 text-white font-cute py-3 rounded-2xl text-lg flex items-center justify-center gap-2">
+                <i class="fa-solid fa-pause"></i> 暫停
+            </button>
+            <button id="resetBtn" class="btn-push w-16 bg-pink-300 hover:bg-pink-400 text-white font-cute py-3 rounded-2xl text-lg flex items-center justify-center">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Audio Context for Sound Effects ---
+        let audioCtx;
+        let isMuted = false;
+        let bgmInterval = null;
+        let bgmNoteIndex = 0;
+        const bgmMelody = [523.25, 659.25, 783.99, 659.25, 523.25, 659.25, 783.99, 880.00]; // Cute melody
+        
+        const muteBtn = document.getElementById('muteBtn');
+        const muteIcon = document.getElementById('muteIcon');
+
+        muteBtn.addEventListener('click', () => {
+            isMuted = !isMuted;
+            if (isMuted) {
+                muteIcon.classList.remove('fa-volume-high');
+                muteIcon.classList.add('fa-volume-xmark');
+            } else {
+                muteIcon.classList.remove('fa-volume-xmark');
+                muteIcon.classList.add('fa-volume-high');
+                initAudio();
+            }
+        });
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playTone(freq, type, duration, volume = 0.1) {
+            if (!audioCtx || isMuted) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playBeep(isHigh) {
+            if (isHigh) {
+                // High pitch double beep
+                playTone(880, 'sine', 0.08);
+                setTimeout(() => playTone(880, 'sine', 0.08), 150);
+            } else {
+                // Normal beep
+                playTone(523.25, 'sine', 0.15); // C5
+            }
+        }
+
+        function playVictory() {
+            if (!audioCtx) return;
+            // Victory melody
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C E G C
+            
+            notes.forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 'sine', 0.2, 0.2), i * 150);
+            });
+            setTimeout(() => playTone(1046.50, 'sine', 0.4, 0.2), 600);
+        }
+
+        function startBGM() {
+            if (bgmInterval) return;
+            bgmNoteIndex = 0;
+            bgmInterval = setInterval(() => {
+                if (isRunning && !isFinished) {
+                    playTone(bgmMelody[bgmNoteIndex], 'sine', 0.15, 0.03); // Low volume BGM
+                    bgmNoteIndex = (bgmNoteIndex + 1) % bgmMelody.length;
+                }
+            }, 400);
+        }
+
+        function stopBGM() {
+            if (bgmInterval) {
+                clearInterval(bgmInterval);
+                bgmInterval = null;
+            }
+        }
+
+        // --- Logic for Timer ---
+        let timerInterval;
+        let totalSeconds = 0;
+        let isRunning = false;
+        let isFinished = false;
+
+        const inputHour = document.getElementById('inputHour'); // New
+        const inputMin = document.getElementById('inputMin');
+        const inputSec = document.getElementById('inputSec');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const statusMsg = document.getElementById('statusMessage');
+
+        const pad = (val) => val.toString().padStart(2, '0');
+
+        function updateInputs() {
+            const hrs = Math.floor(totalSeconds / 3600);
+            const mins = Math.floor((totalSeconds % 3600) / 60);
+            const secs = totalSeconds % 60;
+            
+            inputHour.value = pad(hrs);
+            inputMin.value = pad(mins);
+            inputSec.value = pad(secs);
+        }
+
+        function startTimer() {
+            initAudio();
+
+            if (!isRunning) {
+                if (totalSeconds === 0 && !isFinished) {
+                    let h = parseInt(inputHour.value) || 0;
+                    let m = parseInt(inputMin.value) || 0;
+                    let s = parseInt(inputSec.value) || 0;
+                    totalSeconds = h * 3600 + m * 60 + s;
+                }
+                
+                if (totalSeconds <= 0) return;
+
+                isRunning = true;
+                isFinished = false;
+                statusMsg.classList.add('hidden');
+                
+                startBtn.classList.add('hidden');
+                pauseBtn.classList.remove('hidden');
+                inputHour.disabled = true;
+                inputMin.disabled = true;
+                inputSec.disabled = true;
+
+                dinoState = 'running';
+                startBGM();
+
+                timerInterval = setInterval(() => {
+                    if (totalSeconds > 0) {
+                        totalSeconds--;
+                        updateInputs();
+
+                        // Sound Logic
+                        if (totalSeconds <= 10 && totalSeconds > 5) {
+                            playBeep(false);
+                        } else if (totalSeconds <= 5 && totalSeconds > 0) {
+                            playBeep(true);
+                        }
+
+                    } else {
+                        finishTimer();
+                    }
+                }, 1000);
+            }
+        }
+
+        function pauseTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            dinoState = 'idle';
+            stopBGM();
+            
+            pauseBtn.classList.add('hidden');
+            startBtn.classList.remove('hidden');
+            startBtn.innerHTML = '<i class="fa-solid fa-play"></i> 繼續';
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            totalSeconds = 0;
+            isFinished = false;
+            
+            // Reset Inputs to default 00:00:00
+            inputHour.value = "00";
+            inputMin.value = "00";
+            inputSec.value = "00";
+            
+            inputHour.disabled = false;
+            inputMin.disabled = false;
+            inputSec.disabled = false;
+            startBtn.innerHTML = '<i class="fa-solid fa-play"></i> 開始';
+            statusMsg.classList.add('hidden');
+            
+            dinoState = 'idle';
+            obstacles = [];
+        }
+
+        function finishTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            isFinished = true;
+            dinoState = 'jumping'; 
+            stopBGM();
+            
+            updateInputs();
+            pauseBtn.classList.add('hidden');
+            startBtn.classList.remove('hidden');
+            startBtn.innerHTML = '<i class="fa-solid fa-play"></i> 開始';
+            inputHour.disabled = false;
+            inputMin.disabled = false;
+            inputSec.disabled = false;
+
+            statusMsg.classList.remove('hidden');
+            createConfetti();
+            playVictory();
+        }
+
+        startBtn.addEventListener('click', startTimer);
+        pauseBtn.addEventListener('click', pauseTimer);
+        resetBtn.addEventListener('click', resetTimer);
+
+        [inputHour, inputMin, inputSec].forEach(input => {
+            input.addEventListener('change', () => {
+                let v = parseInt(input.value);
+                if (isNaN(v) || v < 0) v = 0;
+                input.value = pad(v);
+            });
+        });
+
+        // --- Logic for Canvas Game Animation ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let dinoState = 'idle';
+        let gameFrame = 0;
+        let groundX = 0;
+        let obstacles = [];
+        
+        const C_SKY = '#F0F9FF';
+        const C_GROUND = '#FFCCBC';
+        
+        // Colors for Blue T-Rex
+        const C_DINO = '#42A5F5'; // Stronger Blue
+        const C_DINO_DETAIL = '#1E88E5'; // Detail Blue
+        const C_CACTUS = '#A5D6A7';
+        
+        function drawTrex(x, y, frame) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            let bounce = 0;
+            if (dinoState === 'running') {
+                bounce = Math.sin(frame * 0.2) * 3;
+            } else if (dinoState === 'jumping') {
+                // Higher jump to clear cactus
+                bounce = Math.abs(Math.sin(frame * 0.08)) * -50; 
+            }
+            ctx.translate(0, bounce);
+
+            // T-Rex Body (More upright, bigger head)
+            ctx.fillStyle = C_DINO;
+            
+            // Body
+            roundRect(ctx, 0, 0, 35, 35, 8); 
+            
+            // Big Head
+            roundRect(ctx, 15, -25, 35, 30, 8); 
+
+            // Eye
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(38, -15, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(40, -15, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tooth (T-Rex characteristic)
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.moveTo(42, 5);
+            ctx.lineTo(45, 0);
+            ctx.lineTo(48, 5);
+            ctx.fill();
+
+            // Blush (Cute element retained!)
+            ctx.fillStyle = '#FFCDD2';
+            ctx.globalAlpha = 0.6;
+            ctx.beginPath();
+            ctx.arc(25, -12, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+
+            // Tiny Arms (T-Rex characteristic)
+            ctx.fillStyle = C_DINO_DETAIL;
+            roundRect(ctx, 30, 10, 12, 5, 2);
+
+            // Legs (Thicker)
+            ctx.fillStyle = C_DINO_DETAIL;
+            if (dinoState === 'running') {
+                if (Math.sin(frame * 0.2) > 0) {
+                    roundRect(ctx, 5, 35, 8, 12, 3);
+                    roundRect(ctx, 22, 28, 8, 10, 3);
+                } else {
+                    roundRect(ctx, 5, 28, 8, 10, 3);
+                    roundRect(ctx, 22, 35, 8, 12, 3);
+                }
+            } else if (dinoState === 'jumping') {
+                // Legs tucked a bit
+                roundRect(ctx, 5, 30, 8, 10, 3);
+                roundRect(ctx, 22, 25, 8, 10, 3);
+            } else {
+                roundRect(ctx, 5, 35, 8, 12, 3);
+                roundRect(ctx, 22, 35, 8, 12, 3);
+            }
+            
+            // Tail
+            ctx.fillStyle = C_DINO;
+            ctx.beginPath();
+            ctx.moveTo(0, 20);
+            ctx.lineTo(-15, 10);
+            ctx.lineTo(0, 30);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawCactus(x, y) {
+            ctx.fillStyle = C_CACTUS;
+            roundRect(ctx, x, y - 30, 14, 30, 5);
+            roundRect(ctx, x - 8, y - 22, 8, 8, 3);
+            roundRect(ctx, x + 14, y - 18, 8, 8, 3);
+            ctx.fillStyle = '#F48FB1';
+            ctx.beginPath();
+            ctx.arc(x + 7, y - 32, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawMushroom(x, y) {
+            // Stem
+            ctx.fillStyle = '#FFF9C4';
+            roundRect(ctx, x + 2, y - 15, 10, 15, 3);
+            // Cap
+            ctx.fillStyle = '#FF5252';
+            ctx.beginPath();
+            ctx.arc(x + 7, y - 15, 12, Math.PI, 0);
+            ctx.fill();
+            // Dots
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(x + 2, y - 20, 2.5, 0, Math.PI * 2);
+            ctx.arc(x + 12, y - 18, 2, 0, Math.PI * 2);
+            ctx.arc(x + 7, y - 24, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawRock(x, y) {
+            // Cute sleepy rock
+            ctx.fillStyle = '#9E9E9E';
+            ctx.beginPath();
+            ctx.ellipse(x + 7, y - 8, 12, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Zzz text
+            ctx.fillStyle = '#757575';
+            ctx.font = "8px Arial";
+            ctx.fillText("z", x - 2, y - 18);
+            ctx.fillText("z", x + 3, y - 22);
+        }
+
+        function drawCloud(x, y) {
+            ctx.fillStyle = '#FFFFFF'; // PURE WHITE CLOUDS
+            ctx.globalAlpha = 0.95; // More visible
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, Math.PI * 2);
+            ctx.arc(x + 15, y - 5, 20, 0, Math.PI * 2);
+            ctx.arc(x + 35, y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // --- Main Animation Loop ---
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Dynamic Speed Calculation
+            let currentSpeed = 3; // Base speed
+            
+            // Speed up in last 10 seconds!
+            if (isRunning && totalSeconds <= 10 && totalSeconds > 0) {
+                currentSpeed = 3 + (10 - totalSeconds) * 0.8; 
+            }
+
+            // Background Sky
+            ctx.fillStyle = C_SKY;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Clouds
+            const cloudSpeed = 0.5;
+            let cloudX = (gameFrame * cloudSpeed) % (canvas.width + 100);
+            drawCloud(canvas.width - cloudX, 40);
+            drawCloud(canvas.width - cloudX + 250, 70);
+            // Added a 3rd cloud for variety
+            drawCloud(canvas.width - cloudX + 500, 30);
+
+            // Ground
+            const groundY = canvas.height - 30;
+            ctx.fillStyle = C_GROUND;
+            ctx.fillRect(0, groundY, canvas.width, 30);
+            
+            // Ground movement
+            ctx.fillStyle = '#FFAB91';
+            if (dinoState === 'running' || dinoState === 'jumping') {
+                groundX = (groundX + currentSpeed) % 40;
+            }
+            for (let i = 0; i < canvas.width / 40 + 1; i++) {
+                ctx.beginPath();
+                ctx.arc((i * 40) - groundX, groundY + 10, 3, 0, Math.PI*2);
+                ctx.arc((i * 40) - groundX + 20, groundY + 22, 2, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            // Obstacles Logic
+            if (isRunning) {
+                // Add obstacles randomly (frequency increases slightly with speed)
+                let chance = 0.008 + (currentSpeed - 3) * 0.001;
+                if (Math.random() < chance && obstacles.length < 3) {
+                    // Check minimum distance from last obstacle
+                    let lastObsX = obstacles.length > 0 ? obstacles[obstacles.length-1].x : 0;
+                    if (canvas.width - lastObsX > 200) {
+                        const obstacleTypes = ['cactus', 'mushroom', 'rock'];
+                        const randomType = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+                        obstacles.push({
+                            x: canvas.width + 50,
+                            type: randomType
+                        });
+                    }
+                }
+            }
+
+            // Draw Obstacles & Auto Jump Detection
+            let isObstacleNear = false;
+            
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                
+                if (obs.type === 'cactus') {
+                    drawCactus(obs.x, groundY);
+                } else if (obs.type === 'mushroom') {
+                    drawMushroom(obs.x, groundY);
+                } else if (obs.type === 'rock') {
+                    drawRock(obs.x, groundY);
+                }
+                
+                if (isRunning) {
+                    obs.x -= currentSpeed;
+                }
+
+                // Auto Jump Logic
+                if (obs.x > 30 && obs.x < 140) {
+                    isObstacleNear = true;
+                }
+
+                if (obs.x < -30) {
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            // Determine Dino State
+            if (isRunning) {
+                if (isObstacleNear) {
+                    dinoState = 'jumping';
+                } else {
+                    dinoState = 'running';
+                }
+            }
+            
+            // Draw Dino (Switched back to drawTrex)
+            drawTrex(50, groundY - 40, gameFrame);
+
+            if (dinoState !== 'idle') {
+                gameFrame += (currentSpeed / 3); 
+            }
+            
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        // Confetti Function
+        function createConfetti() {
+            const colors = ['#FFC107', '#FF4081', '#448AFF', '#69F0AE', '#E040FB'];
+            const container = document.body;
+            for (let i = 0; i < 50; i++) {
+                const conf = document.createElement('div');
+                conf.classList.add('confetti');
+                conf.style.left = Math.random() * 100 + 'vw';
+                conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                conf.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                conf.style.opacity = Math.random();
+                conf.style.top = '-20px';
+                if(Math.random() > 0.5) conf.style.borderRadius = '50%';
+                container.appendChild(conf);
+                setTimeout(() => { conf.remove(); }, 4000);
+            }
+        }
+
+        // Background Clouds
+        const cloudsContainer = document.getElementById('clouds-container');
+        for(let i=0; i<6; i++) {
+            const cloud = document.createElement('div');
+            cloud.classList.add('floating', 'absolute', 'bg-white', 'rounded-full', 'opacity-40');
+            const size = Math.random() * 60 + 40;
+            cloud.style.width = size + 'px';
+            cloud.style.height = size * 0.6 + 'px';
+            cloud.style.top = Math.random() * 100 + '%';
+            cloud.style.left = Math.random() * 100 + '%';
+            cloud.style.animationDelay = Math.random() * 5 + 's';
+            cloud.style.filter = 'blur(4px)';
+            cloudsContainer.appendChild(cloud);
+        }
+
+    </script>
+</body>
+</html>
